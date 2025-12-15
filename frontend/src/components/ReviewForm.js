@@ -36,17 +36,23 @@ function ReviewForm({ onReviewSubmitted }) {
     setError(null);
     setResult(null);
 
+    console.log('🚀 Sending request to:', `${API_URL}/api/analyze-review`);
+    console.log('📦 Data:', formData);
+
     try {
-      const response = await axios.post(
-        `${API_URL}/api/analyze-review`,
-        formData,
-        {
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          timeout: 60000
+      // Create axios instance with custom config
+      const axiosInstance = axios.create({
+        baseURL: API_URL,
+        timeout: 120000, // 2 minutes
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
         }
-      );
+      });
+
+      const response = await axiosInstance.post('/api/analyze-review', formData);
+
+      console.log('✅ Response received:', response.data);
 
       if (response.data.success) {
         setResult(response.data.data);
@@ -61,13 +67,26 @@ function ReviewForm({ onReviewSubmitted }) {
         setError('Failed to analyze review');
       }
     } catch (err) {
-      console.error('Error submitting review:', err);
+      console.error('❌ Full error:', err);
+      console.error('📋 Error details:', {
+        message: err.message,
+        response: err.response,
+        request: err.request,
+        config: err.config
+      });
+      
       if (err.response) {
-        setError(err.response.data.error || 'Server error occurred');
+        // Server responded with error status
+        const errorMsg = err.response.data.error || `Server error: ${err.response.status}`;
+        setError(errorMsg);
+        console.error('Server error:', errorMsg);
       } else if (err.request) {
-        setError('No response from server. Make sure the backend is running.');
+        // Request made but no response
+        console.error('No response from server. Request details:', err.request);
+        setError('Cannot connect to backend server at http://localhost:6543. Please make sure the backend is running.');
       } else {
-        setError('An error occurred while submitting the review');
+        // Error in request setup
+        setError(`Request error: ${err.message}`);
       }
     } finally {
       setLoading(false);

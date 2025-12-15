@@ -15,29 +15,31 @@ def home(request):
 
 @view_config(route_name='analyze_review', request_method='POST', renderer='json')
 def analyze_review(request):
+    """Analyze product review with AI"""
+    # IMPORTANT: Set CORS headers FIRST
+    request.response.headerlist.extend([
+        ('Access-Control-Allow-Origin', '*'),
+        ('Access-Control-Allow-Methods', 'POST, OPTIONS'),
+        ('Access-Control-Allow-Headers', 'Content-Type, Accept'),
+    ])
+    
     try:
         data = request.json_body
         product_name = data.get('product_name', '').strip()
         review_text = data.get('review_text', '').strip()
         
         if not product_name or not review_text:
-            return Response(
-                json.dumps({'error': 'Product name and review text are required'}),
-                status=400,
-                content_type='application/json'
-            )
+            request.response.status = 400
+            return {'error': 'Product name and review text are required'}
         
         if len(review_text) < 10:
-            return Response(
-                json.dumps({'error': 'Review text too short (minimum 10 characters)'}),
-                status=400,
-                content_type='application/json'
-            )
+            request.response.status = 400
+            return {'error': 'Review text too short (minimum 10 characters)'}
         
-        print(f"Analyzing sentiment for: {review_text[:50]}...")
+        print(f"✅ Analyzing sentiment for: {review_text[:50]}...")
         sentiment_result = analyze_sentiment_hf(review_text)
         
-        print(f"Extracting key points with Gemini...")
+        print(f"✅ Extracting key points with Gemini...")
         key_points = extract_key_points_gemini(review_text)
         
         review = Review(
@@ -51,7 +53,7 @@ def analyze_review(request):
         DBSession.add(review)
         DBSession.commit()
         
-        print(f"Review saved with ID: {review.id}")
+        print(f"✅ Review saved with ID: {review.id}")
         
         return {
             'success': True,
@@ -67,16 +69,23 @@ def analyze_review(request):
         }
         
     except Exception as e:
-        print(f"Error in analyze_review: {str(e)}")
+        print(f"❌ Error in analyze_review: {str(e)}")
+        import traceback
+        traceback.print_exc()
         DBSession.rollback()
-        return Response(
-            json.dumps({'error': f'Server error: {str(e)}'}),
-            status=500,
-            content_type='application/json'
-        )
+        request.response.status = 500
+        return {'error': f'Server error: {str(e)}'}
 
 @view_config(route_name='get_reviews', request_method='GET', renderer='json')
 def get_reviews(request):
+    """Get all reviews from database"""
+    # Set CORS headers
+    request.response.headerlist.extend([
+        ('Access-Control-Allow-Origin', '*'),
+        ('Access-Control-Allow-Methods', 'GET, OPTIONS'),
+        ('Access-Control-Allow-Headers', 'Content-Type, Accept'),
+    ])
+    
     try:
         reviews = DBSession.query(Review).order_by(Review.created_at.desc()).all()
         
@@ -96,13 +105,10 @@ def get_reviews(request):
         }
         
     except Exception as e:
-        print(f"Error in get_reviews: {str(e)}")
-        return Response(
-            json.dumps({'error': f'Server error: {str(e)}'}),
-            status=500,
-            content_type='application/json'
-        )
-
+        print(f"❌ Error in get_reviews: {str(e)}")
+        request.response.status = 500
+        return {'error': f'Server error: {str(e)}'}
+    
 def analyze_sentiment_hf(text):
     API_URL = "https://api-inference.huggingface.co/models/distilbert-base-uncased-finetuned-sst-2-english"
     headers = {"Authorization": f"Bearer {Config.HUGGINGFACE_TOKEN}"}

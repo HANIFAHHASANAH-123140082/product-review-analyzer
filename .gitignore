@@ -1,0 +1,36 @@
+﻿# Dependencies - JANGAN PUSH INI
+node_modules/
+venv/
+env/
+__pycache__/
+
+# Environment variables
+.env
+.env.local
+
+# Python
+*.pyc
+*.pyo
+*.pyd
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
+.pytest_cache/
+
+# Build output
+frontend/build/
+frontend/dist/
+frontend/.next/
+backend/dist/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
